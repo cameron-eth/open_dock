@@ -16,7 +16,8 @@ without opening their windows.
   - **Messages** — recent conversations, previews, unread counts, and sending.
   - **Chrome** — search Google with clean native results, hover a result for a summary (recipes show
     ingredients and time), open pages in a reader view, or get an on-device answer from the top results.
-  - **Spotify** — now playing, controls, volume, search.
+  - **Spotify** — now playing, controls and volume, plus search with songs, artists, albums and
+    playlists right in the widget; picking one plays it in the Spotify app without opening its window.
 - **Mono**, an on-device assistant (Apple's Foundation Models, free and private): "What needs me?",
   conversation summaries, suggested replies, and `@`-mentions to point it at an app or conversation.
   It only ever writes drafts you approve.

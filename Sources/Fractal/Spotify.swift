@@ -68,6 +68,18 @@ final class SpotifyControl: ObservableObject {
     func previous() { tell("previous track") }
     func setVolume(_ v: Double) { track?.volume = v; tell("set sound volume to \(Int(v.rounded()))") }
 
+    /// Play a song, album, playlist or artist by its Spotify address — the app stays in the background.
+    func playURI(_ uri: String) {
+        queue.async { [weak self] in
+            _ = MessagesChats.osascript("""
+            on run argv
+              tell application "Spotify" to play track (item 1 of argv)
+            end run
+            """, args: [uri])
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self?.refresh() }
+        }
+    }
+
     /// Opens Spotify's search for the text (Spotify comes forward so you can pick a result).
     func search(_ text: String) {
         let q = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -79,13 +91,23 @@ final class SpotifyControl: ObservableObject {
 
 struct NowPlayingCard: View {
     @ObservedObject private var spotify = SpotifyControl.shared
-    @State private var query = ""
+    @ObservedObject private var search = SpotifySearch.shared
     @State private var volume: Double = 50
-    @FocusState private var focused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if let t = spotify.track {
+            if let t = spotify.track, search.active {
+                // Searching: a slim now-playing bar keeps the room for results.
+                HStack(spacing: 8) {
+                    AsyncImage(url: t.artwork) { img in img.resizable() } placeholder: { Color.primary.opacity(0.08) }
+                        .frame(width: 24, height: 24).clipShape(RoundedRectangle(cornerRadius: 4))
+                    Text(t.name).font(.system(size: 11.5, weight: .semibold)).lineLimit(1)
+                    Text(t.artist).font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(1)
+                    Spacer()
+                    Control(t.playing ? "pause.fill" : "play.fill") { spotify.playPause() }
+                    Control("forward.fill") { spotify.next() }
+                }
+            } else if let t = spotify.track {
                 HStack(spacing: 10) {
                     AsyncImage(url: t.artwork) { img in img.resizable().aspectRatio(contentMode: .fill) }
                         placeholder: { RoundedRectangle(cornerRadius: 6).fill(.primary.opacity(0.08)) }
@@ -116,15 +138,7 @@ struct NowPlayingCard: View {
             } else {
                 Text("Nothing playing.").font(.system(size: 12)).foregroundStyle(.secondary)
             }
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").font(.system(size: 11)).foregroundStyle(.secondary)
-                TextField("Search Spotify…", text: $query)
-                    .textFieldStyle(.plain).font(.system(size: 12)).focused($focused)
-                    .onSubmit { spotify.search(query); query = ""; HoverPreview.shared.hide(now: true, force: true) }
-            }
-            .padding(.horizontal, 10).padding(.vertical, 8)
-            .background(RoundedRectangle(cornerRadius: 10).fill(.primary.opacity(0.06)))
-            .onChange(of: focused) { _, f in if f { HoverPreview.shared.beginTyping() } }
+            SpotifySearchPanel()
         }
         .padding(.top, 6)
         .onAppear { spotify.refresh() }
